@@ -66,6 +66,8 @@ jobs:
         NEW_PASSWORD=${{ secrets.NEW_ARGOCD_PASSWORD }}
         argocd account update-password --current-password ${{ steps.retrieve-password.outputs.password }} --new-password $NEW_PASSWORD
 
+   # log into localhost:8080 Open a web browser and navigate to http://localhost:8080 Log in with the admin username and the new password you set.
+
     - name: Deploy Prometheus
       run: |
         kubectl apply -f prometheus.yaml
