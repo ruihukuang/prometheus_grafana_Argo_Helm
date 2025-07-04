@@ -29,6 +29,35 @@ jobs:
       run: |
         aws eks update-kubeconfig --name your-eks-cluster-name --region us-west-2
 
+    - name: Install Argo CD CLI
+      run: |
+        curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+        chmod +x /usr/local/bin/argocd
+
+    - name: Create a Namespace for Argo CD
+      run: |
+        kubectl create namespace argocd
+
+    - name: install Argo CD in your EKS cluster
+      run: |
+        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+    - name: Access the Argo CD API Server
+      run: |
+        kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+    - name: Retrieve Argo CD Admin Password
+      id: retrieve-password
+      run: |
+        export PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
+        echo "::set-output name=password::$PASSWORD"
+
+    - name: Update Argo CD Admin Password
+      id: update-password
+      run: |
+        NEW_PASSWORD=${{ secrets.NEW_ARGOCD_PASSWORD }}
+        argocd account update-password --current-password ${{ steps.retrieve-password.outputs.password }} --new-password $NEW_PASSWORD
+
     - name: Deploy Prometheus
       run: |
         kubectl apply -f prometheus.yaml
