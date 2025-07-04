@@ -29,6 +29,14 @@ jobs:
       run: |
         aws eks update-kubeconfig --name your-eks-cluster-name --region us-west-2
 
+    - name: Install Helm
+      run: |
+        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+    - name: Verify Helm Installation
+      run: |
+        helm version
+
     - name: Install Argo CD CLI
       run: |
         curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
