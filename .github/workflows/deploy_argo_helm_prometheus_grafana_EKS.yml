@@ -29,15 +29,39 @@ jobs:
       run: |
         aws eks update-kubeconfig --name ${{ secrets.EKS_Cluster }} --region ${{ secrets.REGION }}
 
+    - name: Test kubectl access
+      run: |
+        kubectl get nodes
+
+    - name: Check for Helm
+      id: helm_check
+      run: |
+        if helm version > /dev/null 2>&1; then
+          echo "Helm is already installed"
+          echo "helm_installed=true" >> $GITHUB_ENV
+        else
+          echo "Helm is not installed"
+          echo "helm_installed=false" >> $GITHUB_ENV
+        fi
+
     - name: Install Helm
+      if: env.helm_installed == 'false'
       run: |
         curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-    - name: Verify Helm Installation
+    - name: Check for Argo CD CLI
+      id: argocd_check
       run: |
-        helm version
+        if argocd version > /dev/null 2>&1; then
+          echo "Argo CD CLI is already installed"
+          echo "argocd_installed=true" >> $GITHUB_ENV
+        else
+          echo "Argo CD CLI is not installed"
+          echo "argocd_installed=false" >> $GITHUB_ENV
+        fi
 
     - name: Install Argo CD CLI
+      if: env.argocd_installed == 'false'
       run: |
         curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
         chmod +x /usr/local/bin/argocd
