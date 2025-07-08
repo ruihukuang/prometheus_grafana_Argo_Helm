@@ -18,7 +18,7 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2  # Change to your AWS region
+        aws-region: ${{ secrets.REGION }}  # Change to your AWS region
 
     - name: Set up kubectl
       uses: azure/setup-kubectl@v1
@@ -27,7 +27,7 @@ jobs:
 
     - name: Update kubeconfig
       run: |
-        aws eks update-kubeconfig --name your-eks-cluster-name --region us-west-2
+        aws eks update-kubeconfig --name your-eks-cluster-name --region ${{ secrets.REGION }}
 
     - name: Install Helm
       run: |
@@ -68,6 +68,10 @@ jobs:
 
    # log into localhost:8080 Open a web browser and navigate to http://localhost:8080 Log in with the admin username and the new password you set.
 
+    - name: Create a Namespace for Prometheus and Grafana
+      run: |
+        kubectl create namespace monitoring
+
     - name: Deploy Prometheus
       run: |
         kubectl apply -f prometheus.yaml
@@ -75,4 +79,9 @@ jobs:
     - name: Deploy Grafana
       run: |
         kubectl apply -f grafana.yaml
-        
+
+    - name: Access Grafana locally
+      run: |
+        kubectl port-forward svc/my-grafana 3000:80 -n monitoring
+    #Open your browser and go to http://localhost:3000 to access Grafana.
+      
