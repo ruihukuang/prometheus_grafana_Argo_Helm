@@ -57,7 +57,7 @@ jobs:
           aws eks update-kubeconfig --region ${{ secrets.REGION }} --name MyEKSCluster
           kubectl get nodes
           #Install Argo CLI
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
           # create a Namespace for Argo CD
           kubectl create namespace argocd
@@ -80,7 +80,7 @@ jobs:
           curl -O https://raw.githubusercontent.com/ruihukuang/prometheus_grafana_Argo_Helm/main/grafana.yaml
           kubectl apply -f grafana.yaml
           #Access Grafana locally
-          kubectl port-forward svc/my-grafana 3000:80 -n monitoring
+          kubectl port-forward deployment/grafana 3000:80 -n monitoring
         EOF
 
 
