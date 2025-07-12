@@ -39,23 +39,6 @@ jobs:
       run: |
         curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-    - name: Check for Argo CD CLI
-      id: argocd_check
-      run: |
-        if argocd version > /dev/null 2>&1; then
-          echo "Argo CD CLI is already installed"
-          echo "argocd_installed=true" >> $GITHUB_ENV
-        else
-          echo "Argo CD CLI is not installed"
-          echo "argocd_installed=false" >> $GITHUB_ENV
-        fi
-
-    - name: Install Argo CD CLI
-      if: env.argocd_installed == 'false'
-      run: |
-        curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-        chmod +x /usr/local/bin/argocd
-
     - name: Get Bastion Host Public IP
       id: bastion_ip
       run: |
@@ -75,6 +58,9 @@ jobs:
           set -x  # Enable command tracing
           aws eks update-kubeconfig --region ${{ secrets.REGION }} --name MyEKSCluster
           kubectl get nodes
+          #Install Argo CLI
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
           # create a Namespace for Argo CD
           kubectl create namespace argocd
           #install Argo CD in your EKS cluster
@@ -90,8 +76,10 @@ jobs:
           #Create a Namespace for Prometheus and Grafana
           kubectl create namespace monitoring
           #Deploy Prometheus
+          curl -O https://raw.githubusercontent.com/ruihukuang/prometheus_grafana_Argo_Helm/main/prometheus.yaml
           kubectl apply -f prometheus.yaml
           #Deploy Grafana
+          curl -O https://raw.githubusercontent.com/ruihukuang/prometheus_grafana_Argo_Helm/main/grafana.yaml
           kubectl apply -f grafana.yaml
           #Access Grafana locally
           kubectl port-forward svc/my-grafana 3000:80 -n monitoring
