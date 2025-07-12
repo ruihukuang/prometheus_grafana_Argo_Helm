@@ -64,7 +64,7 @@ jobs:
           #install Argo CD in your EKS cluster
           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
           # Access the Argo CD API Server
-           kubectl port-forward svc/argocd-server -n argocd 8080:443
+           kubectl port-forward service/argocd-server -n argocd 8080:443
           #Retrieve Argo CD Admin Password
           export PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
           echo "::set-output name=password::$PASSWORD"
@@ -80,7 +80,12 @@ jobs:
           curl -O https://raw.githubusercontent.com/ruihukuang/prometheus_grafana_Argo_Helm/main/grafana.yaml
           kubectl apply -f grafana.yaml
           #Access Grafana locally
-          kubectl port-forward deployment/grafana 3000:80 -n monitoring
+          kubectl port-forward service/grafana 3000:80 -n monitoring
+          #Install metrics-server
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+          kubectl get deployment metrics-server -n kube-system
+          kubectl top nodes
+          kubectl top pods --all-namespaces
         EOF
 
 
