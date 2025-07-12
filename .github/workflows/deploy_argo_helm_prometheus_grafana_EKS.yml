@@ -13,29 +13,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Configure AWS credentials
+    - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.REGION }}  # Change to your AWS region
-
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v1
-      with:
-        version: 'latest'
-
-    - name: Update kubeconfig
-      run: |
-        aws eks update-kubeconfig --name ${{ secrets.EKS_Cluster }} --region ${{ secrets.REGION }}
-
-    - name: Test network connectivity of Kubernetes API server
-      run: |
-        curl -k https://4E43FBE6CB81C779E8ACC3930D6C591F.gr7.ap-southeast-2.eks.amazonaws.com
-
-    - name: Test kubectl access
-      run: |
-        kubectl get nodes
+         role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/${{ secrets.ROLE_NAME }}
+         aws-region: ${{ secrets.REGION }}
 
     - name: Check for Helm
       id: helm_check
@@ -70,46 +52,48 @@ jobs:
         curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
         chmod +x /usr/local/bin/argocd
 
-    - name: Create a Namespace for Argo CD
+    - name: Get Bastion Host Public IP
+      id: bastion_ip
       run: |
-        kubectl create namespace argocd
+        bastion_ip=$(aws cloudformation describe-stacks --stack-name BastionHostStack --query "Stacks[0].Outputs[?OutputKey=='BastionPublicIP'].OutputValue" --output text)
+        echo "::set-output name=ip::$bastion_ip"
 
-    - name: install Argo CD in your EKS cluster
+    - name: Create SSH key file
       run: |
-        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+        echo "${{ secrets.SSH_KEY }}" > key.pem
+        chmod 600 key.pem
 
-    - name: Access the Argo CD API Server
+    - name: SSH to Bastion Host and Update Kubeconfig
+      env:
+        BASTION_IP: ${{ steps.bastion_ip.outputs.ip }}
       run: |
-        kubectl port-forward svc/argocd-server -n argocd 8080:443
+        ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$BASTION_IP << EOF
+          set -x  # Enable command tracing
+          aws eks update-kubeconfig --region ${{ secrets.REGION }} --name MyEKSCluster
+          kubectl get nodes
+          # create a Namespace for Argo CD
+          kubectl create namespace argocd
+          #install Argo CD in your EKS cluster
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          # Access the Argo CD API Server
+           kubectl port-forward svc/argocd-server -n argocd 8080:443
+          #Retrieve Argo CD Admin Password
+          export PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
+          echo "::set-output name=password::$PASSWORD"
+          #Update Argo CD Admin Password
+          NEW_PASSWORD=${{ secrets.NEW_ARGOCD_PASSWORD }}
+          argocd account update-password --current-password ${{ steps.retrieve-password.outputs.password }} --new-password $NEW_PASSWORD          
+          #Create a Namespace for Prometheus and Grafana
+          kubectl create namespace monitoring
+          #Deploy Prometheus
+          kubectl apply -f prometheus.yaml
+          #Deploy Grafana
+          kubectl apply -f grafana.yaml
+          #Access Grafana locally
+          kubectl port-forward svc/my-grafana 3000:80 -n monitoring
+        EOF
 
-    - name: Retrieve Argo CD Admin Password
-      id: retrieve-password
-      run: |
-        export PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
-        echo "::set-output name=password::$PASSWORD"
-
-    - name: Update Argo CD Admin Password
-      id: update-password
-      run: |
-        NEW_PASSWORD=${{ secrets.NEW_ARGOCD_PASSWORD }}
-        argocd account update-password --current-password ${{ steps.retrieve-password.outputs.password }} --new-password $NEW_PASSWORD
 
    # log into localhost:8080 Open a web browser and navigate to http://localhost:8080 Log in with the admin username and the new password you set.
-
-    - name: Create a Namespace for Prometheus and Grafana
-      run: |
-        kubectl create namespace monitoring
-
-    - name: Deploy Prometheus
-      run: |
-        kubectl apply -f prometheus.yaml
-
-    - name: Deploy Grafana
-      run: |
-        kubectl apply -f grafana.yaml
-
-    - name: Access Grafana locally
-      run: |
-        kubectl port-forward svc/my-grafana 3000:80 -n monitoring
-    #Open your browser and go to http://localhost:3000 to access Grafana.
+   # Open your browser and go to http://localhost:3000 to access Grafana.
       
