@@ -10,7 +10,7 @@ spec:
     targetRevision: HEAD
     chart: grafana
   destination:
-    server: 'https://69F57CC36A5F8E1F0D824F3C960156B9.yl4.ap-southeast-2.eks.amazonaws.com'
+    server: 'https://2257E12BAC9615FA8A6857B5DF70065B.gr7.ap-southeast-2.eks.amazonaws.com'
     namespace: monitoring
   syncPolicy:
     automated:
