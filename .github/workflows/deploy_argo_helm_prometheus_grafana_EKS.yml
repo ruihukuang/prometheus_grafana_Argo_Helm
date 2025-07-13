@@ -58,13 +58,19 @@ jobs:
           kubectl get nodes
           #Install Argo CLI
           sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
+          sudo chmod +x /usr/local/bin/argocd
           # create a Namespace for Argo CD
           kubectl create namespace argocd
           #install Argo CD in your EKS cluster
           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          # Wait for argocd-server to be deployed 
+          echo "Waiting for argocd-server to be ready..."
+          while ! kubectl get deployment argocd-server -n argocd -o jsonpath='{.status.readyReplicas}' | grep -q '1'; do
+          echo "argocd-server is not ready yet. Sleeping for 10 seconds..."
+          sleep 10
+          done
           # Access the Argo CD API Server
-           kubectl port-forward service/argocd-server -n argocd 8080:443
+          kubectl port-forward service/argocd-server -n argocd 8080:443
           #Retrieve Argo CD Admin Password
           export PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
           echo "::set-output name=password::$PASSWORD"
@@ -83,7 +89,12 @@ jobs:
           kubectl port-forward service/grafana 3000:80 -n monitoring
           #Install metrics-server
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-          kubectl get deployment metrics-server -n kube-system
+          echo "Waiting for metrics-server to be ready..."
+          while ! kubectl get deployment metrics-server -n kube-system -o jsonpath='{.status.readyReplicas}' | grep -q '1'; do
+          echo "Metrics Server is not ready yet. Sleeping for 10 seconds..."
+          sleep 10
+          done
+          echo "Metrics Server is ready!"
           kubectl top nodes
           kubectl top pods --all-namespaces
         EOF
