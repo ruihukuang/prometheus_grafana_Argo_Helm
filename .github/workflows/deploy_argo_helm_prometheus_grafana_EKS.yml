@@ -59,34 +59,42 @@ jobs:
           #Install Argo CLI
           sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           sudo chmod +x /usr/local/bin/argocd
-          # create a Namespace for Argo CD
-          kubectl create namespace argocd
-          #install Argo CD in your EKS cluster
-          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          # install helm 
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          sudo chmod 700 get_helm.sh
+          ./get_helm.sh
+          #Add the Argo CD Helm Repository
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          #Install Argo CD Using Helm
+          helm install argocd argo/argo-cd --namespace argocd --create-namespace
           # Wait for argocd-server to be deployed 
           echo "Waiting for argocd-server to be ready..."
           while ! kubectl get deployment argocd-server -n argocd -o jsonpath='{.status.readyReplicas}' | grep -q '1'; do
           echo "argocd-server is not ready yet. Sleeping for 10 seconds..."
           sleep 10
           done
-          # Access the Argo CD API Server
-          kubectl port-forward service/argocd-server -n argocd 8080:443
-          #Retrieve Argo CD Admin Password
-          export PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
-          echo "::set-output name=password::$PASSWORD"
-          #Update Argo CD Admin Password
-          NEW_PASSWORD=${{ secrets.NEW_ARGOCD_PASSWORD }}
-          argocd account update-password --current-password ${{ steps.retrieve-password.outputs.password }} --new-password $NEW_PASSWORD          
-          #Create a Namespace for Prometheus and Grafana
-          kubectl create namespace monitoring
-          #Deploy Prometheus
-          curl -O https://raw.githubusercontent.com/ruihukuang/prometheus_grafana_Argo_Helm/main/prometheus.yaml
-          kubectl apply -f prometheus.yaml
-          #Deploy Grafana
-          curl -O https://raw.githubusercontent.com/ruihukuang/prometheus_grafana_Argo_Helm/main/grafana.yaml
-          kubectl apply -f grafana.yaml
-          #Access Grafana locally
-          kubectl port-forward service/grafana 3000:80 -n monitoring
+          # expose Argo CD API Server via an AWS Load Balancer, modify the argocd-server service.
+          echo "Wait a few minutes for the Load Balancer of Argo CD API Server to provision"
+          while ! kubectl patch svc argocd-server -n argocd --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
+          echo "Load Balancer of Argo CD API Server is not ready yet. Sleeping for 10 seconds..."
+          sleep 10
+          done
+          # Get the Load Balancer of Argo CD API Server URL
+          kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+          # Access the Argo CD UI and get the password  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+          # Setting Up Prometheus and Grafana with Argo CD Graph
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+          # Expose Grafana with a Load Balancer
+          echo "Wait a few minutes for the Load Balancer of Grafana to provision"
+          while ! kubectl patch svc prometheus-grafana -n monitoring --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
+          echo "Load Balancer of Grafana is not ready yet. Sleeping for 10 seconds..."
+          sleep 10
+          done
+          # Get the Grafana Load Balancer URL
+          kubectl get svc prometheus-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
           #Install metrics-server
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
           echo "Waiting for metrics-server to be ready..."
@@ -97,6 +105,18 @@ jobs:
           echo "Metrics Server is ready!"
           kubectl top nodes
           kubectl top pods --all-namespaces
+          #Enable Argo CD Metrics
+          helm upgrade argocd argo/argo-cd --namespace argocd -f values.yaml
+          # Open up Argo CD, UI by using Port Forwarding on the ArgoCD service NodePort
+          kubectl port-forward service/argocd-server -n argocd 8080:80
+          # Use port forwarding to access Prometheus and Grafana
+          # Prometheus Dashboard
+          kubectl port-forward svc/prometheus-kube-prometheus-prometheus 9090 -n monitoring
+          # http://localhost:9090
+          # Grafana Dashboard
+          kubectl port-forward svc/prometheus-grafana 3000 -n monitoring
+          # http://localhost:3000
+          # kubectl get secret prometheus-stack-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode
         EOF
 
 
