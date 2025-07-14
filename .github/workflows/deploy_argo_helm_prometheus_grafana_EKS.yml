@@ -21,22 +21,6 @@ jobs:
          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/${{ secrets.ROLE_NAME }}
          aws-region: ${{ secrets.REGION }}
 
-    - name: Check for Helm
-      id: helm_check
-      run: |
-        if helm version > /dev/null 2>&1; then
-          echo "Helm is already installed"
-          echo "helm_installed=true" >> $GITHUB_ENV
-        else
-          echo "Helm is not installed"
-          echo "helm_installed=false" >> $GITHUB_ENV
-        fi
-
-    - name: Install Helm
-      if: env.helm_installed == 'false'
-      run: |
-        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
-
     - name: Get Bastion Host Public IP
       id: bastion_ip
       run: |
@@ -56,6 +40,7 @@ jobs:
           set -x  # Enable command tracing
           aws eks update-kubeconfig --region ${{ secrets.REGION }} --name MyEKSCluster
           kubectl get nodes
+          kubectl create namespace argocd
           #Install Argo CLI
           sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           sudo chmod +x /usr/local/bin/argocd
@@ -119,7 +104,4 @@ jobs:
           # kubectl get secret prometheus-stack-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode
         EOF
 
-
-   # log into localhost:8080 Open a web browser and navigate to http://localhost:8080 Log in with the admin username and the new password you set.
-   # Open your browser and go to http://localhost:3000 to access Grafana.
       
