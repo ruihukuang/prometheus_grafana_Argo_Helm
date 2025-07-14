@@ -106,7 +106,7 @@ jobs:
           kubectl top nodes
           kubectl top pods --all-namespaces
           #Enable Argo CD Metrics
-          helm upgrade argocd argo/argo-cd --namespace argocd -f values.yaml
+          helm upgrade argocd argo/argo-cd --namespace argocd -f https://github.com/ruihukuang/prometheus_grafana_Argo_Helm/blob/main/values.yaml
           # Open up Argo CD, UI by using Port Forwarding on the ArgoCD service NodePort
           kubectl port-forward service/argocd-server -n argocd 8080:80
           # Use port forwarding to access Prometheus and Grafana
