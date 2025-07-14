@@ -92,16 +92,6 @@ jobs:
           kubectl top pods --all-namespaces
           #Enable Argo CD Metrics
           helm upgrade argocd argo/argo-cd --namespace argocd -f https://github.com/ruihukuang/prometheus_grafana_Argo_Helm/blob/main/values.yaml
-          # Open up Argo CD, UI by using Port Forwarding on the ArgoCD service NodePort
-          kubectl port-forward service/argocd-server -n argocd 8080:80
-          # Use port forwarding to access Prometheus and Grafana
-          # Prometheus Dashboard
-          kubectl port-forward svc/prometheus-kube-prometheus-prometheus 9090 -n monitoring
-          # http://localhost:9090
-          # Grafana Dashboard
-          kubectl port-forward svc/prometheus-grafana 3000 -n monitoring
-          # http://localhost:3000
-          # kubectl get secret prometheus-stack-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode
         EOF
 
       
