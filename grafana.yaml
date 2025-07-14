@@ -9,7 +9,7 @@ spec:
   project: monitoringtools
   source:
     repoURL: 'https://grafana.github.io/helm-charts'
-    targetRevision: ''
+    targetRevision: HEAD
     chart: grafana
   destination:
     server: 'https://FE7ACC37A14E68CCB106DF99CE441948.gr7.ap-southeast-2.eks.amazonaws.com'
