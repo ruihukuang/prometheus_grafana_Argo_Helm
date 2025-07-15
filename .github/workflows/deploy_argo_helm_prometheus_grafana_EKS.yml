@@ -104,6 +104,7 @@ jobs:
           #To allow Prometheus to scrape ArgoCD metrics, create ServiceMonitor resources in the ArgoCD namespace. 
           #These YAML manifests specify the services to be monitored and must include a label that matches the Prometheus operator’s selector 
           #(in this case, the release name “my-kube-prometheus-stack”).
+          curl -O https://raw.githubusercontent.com/ruihukuang/prometheus_grafana_Argo_Helm/main/argocd-service-monitors.yaml
           echo "Waiting for ArgoCD metrics to be ready..."
           while ! kubectl -n argocd apply -f argocd-service-monitors.yaml; do
           echo "ArgoCD metrics are not ready yet. Sleeping for 10 seconds..."
