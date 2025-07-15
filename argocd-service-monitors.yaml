@@ -3,7 +3,7 @@ kind: ServiceMonitor
 metadata:
   name: argocd-metrics
   labels:
-    release: my-kube-prometheus-stack
+    release: kube-prometheus-stack-1
 spec:
   selector:
     matchLabels:
@@ -16,7 +16,7 @@ kind: ServiceMonitor
 metadata:
   name: argocd-server-metrics
   labels:
-    release: my-kube-prometheus-stack
+    release: kube-prometheus-stack-1
 spec:
   selector:
     matchLabels:
@@ -29,7 +29,7 @@ kind: ServiceMonitor
 metadata:
   name: argocd-repo-server-metrics
   labels:
-    release: my-kube-prometheus-stack
+    release: kube-prometheus-stack-1
 spec:
   selector:
     matchLabels:
