@@ -1,6 +1,0 @@
-server:
-  metrics:
-    enabled: true
-controller:
-  metrics:
-    enabled: true
