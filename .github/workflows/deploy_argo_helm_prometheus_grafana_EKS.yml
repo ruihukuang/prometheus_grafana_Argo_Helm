@@ -77,20 +77,20 @@ jobs:
           helm install my-kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
           # Expose Grafana with a Load Balancer
           echo "Wait a few minutes for the Load Balancer of Grafana to provision"
-          while ! kubectl patch svc prometheus-grafana -n monitoring --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
+          while ! kubectl patch svc my-kube-prometheus-stack-grafana -n monitoring --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
           echo "Load Balancer of Grafana is not ready yet. Sleeping for 10 seconds..."
           sleep 10
           done
           # Get the Grafana Load Balancer URL
-          echo $(kubectl get svc prometheus-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo $(kubectl get svc my-kube-prometheus-stack-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
            # Expose prometheus with a Load Balancer
           echo "Wait a few minutes for the Load Balancer of prometheus to provision"
-          while ! kubectl patch svc prometheus-kube-prometheus-prometheus  -n monitoring --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
+          while ! kubectl patch svc my-kube-prometheus-stack-prometheus  -n monitoring --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
           echo "Load Balancer of Grafana is not ready yet. Sleeping for 10 seconds..."
           sleep 10
           done
           # Get the prometheus Load Balancer URL
-          echo $(kubectl get svc prometheus-kube-prometheus-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo $(kubectl get svc my-kube-prometheus-stack-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           #Install metrics-server
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
           echo "Waiting for metrics-server to be ready..."
