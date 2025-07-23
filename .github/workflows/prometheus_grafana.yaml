@@ -64,7 +64,7 @@ jobs:
           # Get the prometheus Load Balancer URL
           echo $(kubectl get svc my-kube-prometheus-stack-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
          
-          kubectl -n argocd get servicemonitors
+          kubectl  get svc -n monitoring
         EOF
 
       
