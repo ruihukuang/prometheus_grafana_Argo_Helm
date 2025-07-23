@@ -1,4 +1,4 @@
-name: Deploy to EKS
+name: Deploy prometheus and grafana into EKS
 
 on:
  workflow_dispatch:
