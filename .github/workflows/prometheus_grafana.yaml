@@ -1,0 +1,70 @@
+name: Deploy to EKS
+
+on:
+ workflow_dispatch:
+      
+permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+         role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/${{ secrets.ROLE_NAME }}
+         aws-region: ${{ secrets.REGION }}
+
+    - name: Get Bastion Host Public IP
+      id: bastion_ip
+      run: |
+        bastion_ip=$(aws cloudformation describe-stacks --stack-name BastionHostStack --query "Stacks[0].Outputs[?OutputKey=='BastionPublicIP'].OutputValue" --output text)
+        echo "::set-output name=ip::$bastion_ip"
+
+    - name: Create SSH key file
+      run: |
+        echo "${{ secrets.SSH_KEY }}" > key.pem
+        chmod 600 key.pem
+
+    - name: SSH to Bastion Host and Update Kubeconfig
+      env:
+        BASTION_IP: ${{ steps.bastion_ip.outputs.ip }}
+      run: |
+        ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$BASTION_IP << EOF
+          set -x  # Enable command tracing
+          aws eks update-kubeconfig --region ${{ secrets.REGION }} --name MyEKSCluster
+          kubectl get nodes
+          kubectl create namespace monitoring
+          # Setting Up Prometheus and Grafana with Argo CD Graph
+          #add the Prometheus community repository and update your local Helm repository cache
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          #Install the Prometheus Stack
+          helm install my-kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+          # Expose Grafana with a Load Balancer
+          echo "Wait a few minutes for the Load Balancer of Grafana to provision"
+          while ! kubectl patch svc my-kube-prometheus-stack-grafana -n monitoring --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
+          echo "Load Balancer of Grafana is not ready yet. Sleeping for 10 seconds..."
+          sleep 10
+          done
+          # Get the Grafana Load Balancer URL
+          echo $(kubectl get svc my-kube-prometheus-stack-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          # Expose prometheus with a Load Balancer
+          echo "Wait a few minutes for the Load Balancer of prometheus to provision"
+          while ! kubectl patch svc my-kube-prometheus-stack-prometheus   -n monitoring --type='merge' -p '{"spec": {"type": "LoadBalancer"}}' ; do
+          echo "Load Balancer of prometheus is not ready yet. Sleeping for 10 seconds..."
+          sleep 10
+          done
+          # Get the prometheus Load Balancer URL
+          echo $(kubectl get svc my-kube-prometheus-stack-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+         
+          kubectl -n argocd get servicemonitors
+        EOF
+
+      
